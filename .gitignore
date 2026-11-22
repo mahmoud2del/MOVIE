@@ -1,0 +1,3 @@
+private-data/
+*.csv
+node_modules/
