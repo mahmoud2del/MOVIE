@@ -72,6 +72,7 @@ async function enter(profile) {
   try {
     S.tapes = await DB.listTapes((a, b) => { const m = $('#loadMsg'); if (m) m.textContent = `جارٍ تحميل البيانات… ${a} / ${b}`; });
   } catch (e) { $('#view').innerHTML = `<div class="empty err">تعذّر تحميل البيانات: ${esc(e.message)}</div>`; return; }
+  if (!S.tapes.length) toast('لا توجد بيانات في جدول الأشرطة بعد — استورد الشيت أولاً.', true);
   route();
 }
 window.addEventListener('hashchange', () => S.profile && route());
@@ -147,12 +148,15 @@ function viewTapes() {
       <label>الحالة<select id="fs">${opts([...new Set(S.tapes.map(r => r.state || 'غير محدد'))].sort(), f.state)}</select></label>
       <label>اللون<select id="fc">${opts(uniq('color'), f.color)}</select></label>
       <label>نوع الشريط<select id="fk">${opts(uniq('tape_kind'), f.kind)}</select></label>
+      <button class="btn primary" id="fgo">🔍 بحث</button>
       <button class="btn ghost" id="fclear">مسح</button>
     </div>
     <div id="tapesTable"></div>`;
   const upd = () => { f.q = $('#fq').value; f.type = $('#ft').value; f.state = $('#fs').value; f.color = $('#fc').value; f.kind = $('#fk').value; };
   let t; $('#fq').addEventListener('input', () => { clearTimeout(t); t = setTimeout(() => { upd(); f.page = 1; drawTapes(); }, 200); });
   ['ft', 'fs', 'fc', 'fk'].forEach(i => $('#' + i).addEventListener('change', () => { upd(); f.page = 1; drawTapes(); }));
+  $('#fgo').onclick = () => { upd(); f.page = 1; drawTapes(); };
+  $('#fq').addEventListener('keydown', e => { if (e.key === 'Enter') $('#fgo').click(); });
   $('#fclear').onclick = () => { S.tf = { q: '', type: '', state: '', color: '', kind: '', page: 1 }; viewTapes(); };
   $('#tpXlsx').onclick = () => exportRowsXLSX(filterTapes(S.tf));
   $('#tpReport').onclick = () => { S.rf = { ...S.rf, kind: 'status', q: f.q, type: f.type, state: f.state, category: '', work: '' }; go('report'); };
@@ -188,7 +192,7 @@ document.addEventListener('click', e => {
 function viewWorks() {
   $('#view').innerHTML = `
     <div class="page-head"><h2>الأعمال</h2><span class="muted" id="wCount"></span></div>
-    <div class="filters no-print"><input id="wq" type="search" placeholder="ابحث باسم العمل أو المخرج…"></div>
+    <div class="filters no-print"><input id="wq" type="search" placeholder="ابحث باسم العمل أو المخرج…"><button class="btn primary" id="wgo">🔍 بحث</button></div>
     <div id="worksList"></div>`;
   const all = groupWorks(S.tapes);
   const draw = () => {
@@ -201,7 +205,7 @@ function viewWorks() {
         <td class="no-print"><button class="lnk" data-act="wreport" data-w="${esc(w.name)}">بيان حالة</button></td></tr>`).join('') +
       `</tbody></table></div>${list.length > 200 ? `<p class="muted center">يُعرض أول 200 عمل — استخدم البحث لتضييق النتائج.</p>` : ''}`;
   };
-  $('#wq').addEventListener('input', draw); draw();
+  $('#wq').addEventListener('input', draw); $('#wgo').onclick = draw; draw();
 }
 document.addEventListener('click', e => {
   const b = e.target.closest('[data-act="wreport"]'); if (!b) return;
@@ -231,6 +235,7 @@ function viewReport() {
         <label>نوع العمل<select id="rt">${opts(uniq('work_type'), r.type)}</select></label>
         <label>الحالة<select id="rs">${opts([...new Set(S.tapes.map(x => x.state || 'غير محدد'))].sort(), r.state)}</select></label>
         <label>التصنيف<select id="rc">${opts(uniq('category'), r.category)}</select></label>
+        <button class="btn primary" id="rgo">🔍 عرض</button>
         <button class="btn ghost" id="rclear">مسح</button>
       </div>
       ${r.work ? `<div class="work-chip">العمل: <b>${esc(r.work)}</b> <button class="lnk" id="rwork">✕ إلغاء</button></div>` : ''}
@@ -248,6 +253,7 @@ function viewReport() {
   const upd = () => { r.kind = $('#rk').value; r.q = $('#rq').value; r.type = $('#rt').value; r.state = $('#rs').value; r.category = $('#rc').value; r.limit = 40; };
   let t; $('#rq').addEventListener('input', () => { clearTimeout(t); t = setTimeout(() => { upd(); drawReport(); }, 250); });
   ['rk', 'rt', 'rs', 'rc'].forEach(i => $('#' + i).addEventListener('change', () => { upd(); drawReport(); }));
+  $('#rgo').onclick = () => { upd(); drawReport(); };
   $('#rclear').onclick = () => { S.rf = { ...r, q: '', type: '', state: '', category: '', work: '', limit: 40 }; viewReport(); };
   if (r.work) $('#rwork').onclick = () => { r.work = ''; viewReport(); };
   $$('input[name=ori]').forEach(x => x.addEventListener('change', () => { r.orient = x.value; $('#paper').className = 'paper ' + r.orient; setOrientation(r.orient); }));
