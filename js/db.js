@@ -25,7 +25,10 @@ const DB = (() => {
     sb = window.supabase.createClient(url, String(cfg.SUPABASE_ANON_KEY).trim());
   }
 
+  function need() { if (!demo && !sb) throw new Error('لم يتم الاتصال بـ Supabase: تأكد من اتصال الإنترنت ثم حدّث الصفحة (Ctrl+F5).'); }
+
   async function signIn(email, password) {
+    need();
     if (demo) {
       const u = DEMO_USERS[email.trim().toLowerCase()];
       if (!u || u.pw !== password) throw new Error('بيانات الدخول غير صحيحة');
@@ -38,6 +41,7 @@ const DB = (() => {
   }
 
   async function restore() {
+    if (!demo && !sb) return null;
     if (demo) {
       let e = null; try { e = sessionStorage.getItem('demoUser'); } catch (x) {}
       return e && DEMO_USERS[e] ? DEMO_USERS[e].profile : null;
