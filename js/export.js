@@ -12,7 +12,9 @@ function taGroupWorks(rows) {
   works.forEach(w => {
     w.rows.sort((a, b) => (a.tape_no ?? 0) - (b.tape_no ?? 0) || a.tape_id - b.tape_id);
     const f = w.rows[0];
-    w.type = f.work_type; w.director = f.director; w.category = f.category; w.author = f.author;
+    const pick = k => { for (const r of w.rows) { const x = r[k]; if (x && !['-', 'غير معلوم', 'بدون'].includes(String(x).trim())) return String(x).trim(); } return ''; };
+    w.type = f.work_type; w.category = pick('category'); w.director = pick('director'); w.author = pick('author');
+    w.cast = pick('cast_names'); w.scripts = pick('scripts'); w.singers = pick('singers');
     w.states = {};
     w.rows.forEach(r => { const s = r.state || 'غير محدد'; w.states[s] = (w.states[s] || 0) + 1; });
   });
@@ -76,14 +78,15 @@ function taExportRowsXLSX(rows) {
 
 // تصدير بيان الحالة: اسم العمل مرة واحدة (خلايا مدموجة رأسياً)
 function taExportReportXLSX(works) {
-  const head = ['اسم العمل', 'نوع العمل', 'إخراج', ...TA_REPORT_COLS.map(c => c[1])];
+  const head = ['اسم العمل', 'نوع العمل', 'إخراج', 'تأليف', 'سيناريو', 'الأبطال والضيوف / المطربون', ...TA_REPORT_COLS.map(c => c[1])];
   const aoa = [head], merges = [];
   works.forEach(w => {
     const start = aoa.length;
-    w.rows.forEach((r, i) => aoa.push([i === 0 ? w.name : '', i === 0 ? taV(w.type) : '', i === 0 ? taV(w.director) : '', ...TA_REPORT_COLS.map(c => taV(r[c[0]]))]));
-    if (w.rows.length > 1) [0, 1, 2].forEach(c => merges.push({ s: { r: start, c }, e: { r: aoa.length - 1, c } }));
+    const casts = [w.cast, w.singers && !w.cast ? w.singers : ''].filter(Boolean).join(' | ');
+    w.rows.forEach((r, i) => aoa.push([i === 0 ? w.name : '', i === 0 ? taV(w.type) : '', i === 0 ? taV(w.director) : '', i === 0 ? taV(w.author) : '', i === 0 ? taV(w.scripts) : '', i === 0 ? casts : '', ...TA_REPORT_COLS.map(c => taV(r[c[0]]))]));
+    if (w.rows.length > 1) [0, 1, 2, 3, 4, 5].forEach(c => merges.push({ s: { r: start, c }, e: { r: aoa.length - 1, c } }));
   });
-  taSaveSheet(aoa, merges, [34, 16, 18, 10, 12, 12, 9, 9, 11, 16, 16, 40], 'بيان الحالة', `status_report_${taStamp()}.xlsx`);
+  taSaveSheet(aoa, merges, [34, 16, 18, 18, 18, 50, 10, 12, 12, 9, 9, 11, 16, 16, 40], 'بيان الحالة', `status_report_${taStamp()}.xlsx`);
 }
 
 // ---------- الاتجاه + الطباعة + PDF ----------

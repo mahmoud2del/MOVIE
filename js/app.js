@@ -266,10 +266,13 @@ function viewReport() {
 }
 
 function workBlock(w) {
+  const m = (l, x) => x ? `<span>${l}: <b>${esc(x)}</b></span>` : '';
   return `<section class="work${w.rows.length <= 8 ? ' keep' : ''}">
     <div class="work-head"><h3>${esc(w.name)}</h3>
-      <div class="wmeta">${w.type ? `<span>النوع: <b>${esc(w.type)}</b></span>` : ''}${w.category && w.category !== '-' ? `<span>التصنيف: <b>${esc(w.category)}</b></span>` : ''}${w.director && w.director !== 'غير معلوم' ? `<span>إخراج: <b>${esc(w.director)}</b></span>` : ''}
+      <div class="wmeta">${m('النوع', w.type)}${m('التصنيف', w.category)}${m('إخراج', w.director)}${m('تأليف', w.author)}${m('سيناريو', w.scripts)}
       <span>عدد الأشرطة: <b>${w.rows.length}</b></span></div>
+      ${w.cast ? `<div class="wcast"><b>الأبطال والضيوف:</b> ${esc(w.cast)}</div>` : ''}
+      ${w.singers ? `<div class="wcast"><b>المطربون:</b> ${esc(w.singers)}</div>` : ''}
       <div class="wst">${Object.entries(w.states).map(([s, c]) => `${stateChip(s)}<small>×${c}</small>`).join(' ')}</div></div>
     <table class="rt"><thead><tr><th class="c-i">م</th>${TA_REPORT_COLS.map(c => `<th>${c[1]}</th>`).join('')}</tr></thead>
     <tbody>${w.rows.map((r, i) => `<tr><td class="c-i">${i + 1}</td>${TA_REPORT_COLS.map(([k]) => k === 'state' ? `<td>${stateChip(r.state)}</td>` : `<td${k === 'notes' ? ' class="c-n"' : ''}>${esc(taV(r[k]))}</td>`).join('')}</tr>`).join('')}</tbody></table></section>`;
