@@ -158,11 +158,14 @@ function viewTapes() {
   $('#fgo').onclick = () => { upd(); f.page = 1; drawTapes(); };
   $('#fq').addEventListener('keydown', e => { if (e.key === 'Enter') $('#fgo').click(); });
   $('#fclear').onclick = () => { S.tf = { q: '', type: '', state: '', color: '', kind: '', page: 1 }; viewTapes(); };
-  $('#tpXlsx').onclick = () => exportRowsXLSX(filterTapes(S.tf));
+  $('#tpXlsx').onclick = () => taExportRowsXLSX(filterTapes(S.tf));
   $('#tpReport').onclick = () => { S.rf = { ...S.rf, kind: 'status', q: f.q, type: f.type, state: f.state, category: '', work: '' }; go('report'); };
   drawTapes();
 }
 function drawTapes() {
+  try { drawTapesInner(); } catch (e) { $('#tapesTable').innerHTML = `<div class="empty err">خطأ في العرض: ${esc(e.message)}</div>`; console.error(e); }
+}
+function drawTapesInner() {
   const f = S.tf, rows = filterTapes(f), pages = Math.max(1, Math.ceil(rows.length / PAGE_SIZE));
   f.page = Math.min(f.page, pages);
   const slice = rows.slice((f.page - 1) * PAGE_SIZE, f.page * PAGE_SIZE);
@@ -171,8 +174,8 @@ function drawTapes() {
     <div class="tbl-wrap"><table class="tbl">
       <thead><tr><th>#</th><th>اسم العمل</th><th>رقم الشريط</th><th>نوع العمل</th><th>نوع الشريط</th><th>الحلقات</th><th>اللون</th><th>الحالة</th><th class="no-print"></th></tr></thead>
       <tbody>${slice.map((r, i) => `<tr data-id="${r.tape_id}">
-        <td class="num">${(f.page - 1) * PAGE_SIZE + i + 1}</td><td class="nm">${esc(r.work_name)}</td><td class="num">${esc(v(r.tape_no))}</td>
-        <td>${esc(v(r.work_type))}</td><td>${esc(v(r.tape_kind))}</td><td>${esc(v(r.episode))}</td><td>${esc(v(r.color))}</td><td>${stateChip(r.state)}</td>
+        <td class="num">${(f.page - 1) * PAGE_SIZE + i + 1}</td><td class="nm">${esc(r.work_name)}</td><td class="num">${esc(taV(r.tape_no))}</td>
+        <td>${esc(taV(r.work_type))}</td><td>${esc(taV(r.tape_kind))}</td><td>${esc(taV(r.episode))}</td><td>${esc(taV(r.color))}</td><td>${stateChip(r.state)}</td>
         <td class="no-print rowact"><button class="lnk" data-act="view" data-id="${r.tape_id}">عرض</button>
         ${can('edit') ? `<button class="lnk" data-act="edit" data-id="${r.tape_id}">تعديل</button>` : ''}
         ${can('delete') ? `<button class="lnk danger" data-act="del" data-id="${r.tape_id}">حذف</button>` : ''}</td></tr>`).join('') || '<tr><td colspan="9" class="empty">لا توجد نتائج</td></tr>'}</tbody>
@@ -194,13 +197,13 @@ function viewWorks() {
     <div class="page-head"><h2>الأعمال</h2><span class="muted" id="wCount"></span></div>
     <div class="filters no-print"><input id="wq" type="search" placeholder="ابحث باسم العمل أو المخرج…"><button class="btn primary" id="wgo">🔍 بحث</button></div>
     <div id="worksList"></div>`;
-  const all = groupWorks(S.tapes);
+  const all = taGroupWorks(S.tapes);
   const draw = () => {
     const q = norm($('#wq').value).trim();
     const list = all.filter(w => !q || norm(w.name + ' ' + (w.director || '')).includes(q));
     $('#wCount').textContent = `${list.length.toLocaleString('ar-EG')} عمل`;
     $('#worksList').innerHTML = `<div class="tbl-wrap"><table class="tbl"><thead><tr><th>اسم العمل</th><th>النوع</th><th>التصنيف</th><th>إخراج</th><th>الأشرطة</th><th>الحالات</th><th class="no-print"></th></tr></thead><tbody>` +
-      list.slice(0, 200).map(w => `<tr><td class="nm">${esc(w.name)}</td><td>${esc(v(w.type))}</td><td>${esc(v(w.category))}</td><td>${esc(v(w.director))}</td>
+      list.slice(0, 200).map(w => `<tr><td class="nm">${esc(w.name)}</td><td>${esc(taV(w.type))}</td><td>${esc(taV(w.category))}</td><td>${esc(taV(w.director))}</td>
         <td class="num">${w.rows.length}</td><td>${Object.entries(w.states).map(([s, c]) => `${stateChip(s)}<small>×${c}</small>`).join(' ')}</td>
         <td class="no-print"><button class="lnk" data-act="wreport" data-w="${esc(w.name)}">بيان حالة</button></td></tr>`).join('') +
       `</tbody></table></div>${list.length > 200 ? `<p class="muted center">يُعرض أول 200 عمل — استخدم البحث لتضييق النتائج.</p>` : ''}`;
@@ -256,10 +259,10 @@ function viewReport() {
   $('#rgo').onclick = () => { upd(); drawReport(); };
   $('#rclear').onclick = () => { S.rf = { ...r, q: '', type: '', state: '', category: '', work: '', limit: 40 }; viewReport(); };
   if (r.work) $('#rwork').onclick = () => { r.work = ''; viewReport(); };
-  $$('input[name=ori]').forEach(x => x.addEventListener('change', () => { r.orient = x.value; $('#paper').className = 'paper ' + r.orient; setOrientation(r.orient); }));
+  $$('input[name=ori]').forEach(x => x.addEventListener('change', () => { r.orient = x.value; $('#paper').className = 'paper ' + r.orient; taSetOrientation(r.orient); }));
   $('#rPrint').onclick = doPrint; $('#rPdf').onclick = doPdf;
-  $('#rXlsx').onclick = () => r.kind === 'summary' ? exportRowsXLSX(reportRows()) : exportReportXLSX(groupWorks(reportRows()));
-  setOrientation(r.orient); drawReport();
+  $('#rXlsx').onclick = () => r.kind === 'summary' ? taExportRowsXLSX(reportRows()) : taExportReportXLSX(taGroupWorks(reportRows()));
+  taSetOrientation(r.orient); drawReport();
 }
 
 function workBlock(w) {
@@ -268,8 +271,8 @@ function workBlock(w) {
       <div class="wmeta">${w.type ? `<span>النوع: <b>${esc(w.type)}</b></span>` : ''}${w.category && w.category !== '-' ? `<span>التصنيف: <b>${esc(w.category)}</b></span>` : ''}${w.director && w.director !== 'غير معلوم' ? `<span>إخراج: <b>${esc(w.director)}</b></span>` : ''}
       <span>عدد الأشرطة: <b>${w.rows.length}</b></span></div>
       <div class="wst">${Object.entries(w.states).map(([s, c]) => `${stateChip(s)}<small>×${c}</small>`).join(' ')}</div></div>
-    <table class="rt"><thead><tr><th class="c-i">م</th>${REPORT_COLS.map(c => `<th>${c[1]}</th>`).join('')}</tr></thead>
-    <tbody>${w.rows.map((r, i) => `<tr><td class="c-i">${i + 1}</td>${REPORT_COLS.map(([k]) => k === 'state' ? `<td>${stateChip(r.state)}</td>` : `<td${k === 'notes' ? ' class="c-n"' : ''}>${esc(v(r[k]))}</td>`).join('')}</tr>`).join('')}</tbody></table></section>`;
+    <table class="rt"><thead><tr><th class="c-i">م</th>${TA_REPORT_COLS.map(c => `<th>${c[1]}</th>`).join('')}</tr></thead>
+    <tbody>${w.rows.map((r, i) => `<tr><td class="c-i">${i + 1}</td>${TA_REPORT_COLS.map(([k]) => k === 'state' ? `<td>${stateChip(r.state)}</td>` : `<td${k === 'notes' ? ' class="c-n"' : ''}>${esc(taV(r[k]))}</td>`).join('')}</tr>`).join('')}</tbody></table></section>`;
 }
 function summaryHTML(rows) {
   const types = [...new Set(rows.map(r => r.work_type || 'غير محدد'))].sort((a, b) => a.localeCompare(b, 'ar'));
@@ -282,22 +285,22 @@ function summaryHTML(rows) {
 }
 function drawReport(all) {
   const r = S.rf, rows = reportRows(), el = $('#paper'); if (!el) return;
-  const works = groupWorks(rows), shown = all ? works : works.slice(0, r.limit);
+  const works = taGroupWorks(rows), shown = all ? works : works.slice(0, r.limit);
   const sc = {}; rows.forEach(x => { const s = x.state || 'غير محدد'; sc[s] = (sc[s] || 0) + 1; });
   el.className = 'paper ' + r.orient;
   el.innerHTML = `<table class="pwrap"><tbody><tr><td>
     <div class="rep-head"><div><h2>${r.kind === 'summary' ? 'ملخص حالة الأشرطة' : 'بيان حالة الأعمال'}</h2><div class="sub">${esc(filterSummary())}</div></div>
-      <div class="rmeta"><div>التاريخ: ${today()}</div><div>أعدّه: ${esc(S.profile.full_name || S.profile.email)}</div></div></div>
+      <div class="rmeta"><div>التاريخ: ${taToday()}</div><div>أعدّه: ${esc(S.profile.full_name || S.profile.email)}</div></div></div>
     <div class="sum-row"><div class="sum-card"><b>${works.length.toLocaleString('ar-EG')}</b><span>عمل</span></div><div class="sum-card"><b>${rows.length.toLocaleString('ar-EG')}</b><span>شريط</span></div>
       ${Object.entries(sc).sort((a, b) => b[1] - a[1]).map(([s, c]) => `<div class="sum-card">${stateChip(s)}<b>${c.toLocaleString('ar-EG')}</b></div>`).join('')}</div>
     ${!rows.length ? '<div class="empty">لا توجد بيانات مطابقة</div>' : r.kind === 'summary' ? summaryHTML(rows) : shown.map(workBlock).join('')}
     ${!all && r.kind !== 'summary' && works.length > shown.length ? `<div class="more no-print"><button class="btn" id="rMore">عرض المزيد (${shown.length} من ${works.length})</button><span class="muted"> الطباعة والتصدير يشملان كل الأعمال.</span></div>` : ''}
-    <div class="rep-end">— نهاية التقرير — تصميم ${esc(OWNER)}</div>
+    <div class="rep-end">— نهاية التقرير — تصميم ${esc(TA_OWNER)}</div>
     </td></tr></tbody><tfoot><tr><td class="sp-f"></td></tr></tfoot></table>`;
   const more = $('#rMore'); if (more) more.onclick = () => { r.limit += 60; drawReport(); };
 }
 function doPrint() {
-  drawReport(true); setOrientation(S.rf.orient);
+  drawReport(true); taSetOrientation(S.rf.orient);
   const back = () => { drawReport(false); window.removeEventListener('afterprint', back); };
   window.addEventListener('afterprint', back);
   setTimeout(() => window.print(), 150);
@@ -308,7 +311,7 @@ async function doPdf() {
   const btn = $('#rPdf'); btn.disabled = true; btn.textContent = 'جارٍ التجهيز…';
   try {
     drawReport(true);
-    await downloadPDF($('#paper'), S.rf.orient, `report_${stamp()}.pdf`);
+    await taDownloadPDF($('#paper'), S.rf.orient, `report_${taStamp()}.pdf`);
   } catch (e) { toast('تعذّر إنشاء PDF مباشرة، استخدم الطباعة ← حفظ كـ PDF.', true); doPrint(); }
   drawReport(false); btn.disabled = false; btn.textContent = '⬇ تصدير PDF';
 }
