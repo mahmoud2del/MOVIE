@@ -16,7 +16,13 @@ const DB = (() => {
   async function init() {
     if (demo) return;
     if (!window.supabase) throw new Error('تعذّر تحميل مكتبة Supabase (تحقق من الاتصال بالإنترنت).');
-    sb = window.supabase.createClient(cfg.SUPABASE_URL, cfg.SUPABASE_ANON_KEY);
+    let url = String(cfg.SUPABASE_URL).trim().replace(/\s+/g, '');
+    if (!/^https?:\/\//i.test(url)) url = 'https://' + url;
+    try { const u = new URL(url); url = u.origin; }
+    catch (e) { throw new Error('رابط Supabase غير صحيح في js/config.js — الشكل المطلوب: https://xxxxxxxx.supabase.co'); }
+    if (!/\.supabase\.(co|in)$/i.test(new URL(url).hostname) && !/localhost|127\.0\.0\.1/.test(url))
+      throw new Error('SUPABASE_URL يجب أن ينتهي بـ .supabase.co (الحالي: ' + url + ')');
+    sb = window.supabase.createClient(url, String(cfg.SUPABASE_ANON_KEY).trim());
   }
 
   async function signIn(email, password) {
