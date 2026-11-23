@@ -125,3 +125,9 @@ async function taDownloadPDF(el, orient, fileName) {
   });
   await worker.save();
 }
+
+function taExportNamesXLSX(works) {
+  const aoa = [['م', 'اسم العمل', 'نوع العمل']];
+  works.forEach((w, i) => aoa.push([i + 1, w.name, taV(w.type)]));
+  taSaveSheet(aoa, [], [6, 50, 18], 'قائمة الأعمال', `works_list_${taStamp()}.xlsx`);
+}
