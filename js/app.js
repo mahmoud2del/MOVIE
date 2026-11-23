@@ -331,7 +331,7 @@ function drawReport(all) {
   el.innerHTML = `<table class="pwrap"><tbody><tr><td>
     ${body}
     ${!all && r.kind === 'status' && works.length > shown.length ? `<div class="more no-print"><button class="btn" id="rMore">عرض المزيد (${shown.length} من ${works.length})</button><span class="muted"> الطباعة والتصدير يشملان كل الأعمال.</span></div>` : ''}
-    <div class="rep-end">— نهاية التقرير —</div>
+    <div class="rep-end"> تصميم : محمود عادل— نهاية التقرير —</div>
     </td></tr></tbody><tfoot><tr><td class="sp-f"></td></tr></tfoot></table>`;
   const more = $('#rMore'); if (more) more.onclick = () => { r.limit += 60; drawReport(); };
 }
