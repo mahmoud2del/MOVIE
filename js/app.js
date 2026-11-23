@@ -6,9 +6,9 @@ const norm = s => String(s ?? '').toLowerCase().replace(/[ً-ٰٟـ]/g, '').repl
 const uniq = k => [...new Set(S.tapes.map(r => r[k]).filter(x => x !== null && x !== undefined && x !== ''))].sort((a, b) => String(a).localeCompare(String(b), 'ar'));
 
 const S = {
-  profile: null, tapes: [], page: 'dashboard',
+  profile: null, logo: null, tapes: [], page: 'dashboard',
   tf: { q: '', type: '', state: '', color: '', kind: '', page: 1 },
-  rf: { kind: 'status', q: '', type: '', state: '', category: '', work: '', orient: 'portrait', limit: 40 },
+  rf: { signer: (() => { try { return localStorage.getItem('signer') || ''; } catch (e) { return ''; } })(), title: 'رئيس الإدارة المركزية للمكتبات والأفلام', kind: 'status', q: '', type: '', state: '', category: '', work: '', orient: 'portrait', limit: 40 },
 };
 const PAGE_SIZE = 50;
 const ROLE_AR = { admin: 'مدير', editor: 'محرر', viewer: 'مشاهد' };
@@ -66,12 +66,14 @@ async function enter(profile) {
   $('#userName').textContent = profile.full_name || profile.email;
   $('#userRole').textContent = ROLE_AR[profile.role];
   const items = [['dashboard', 'الرئيسية'], ['tapes', 'الأشرطة'], ['works', 'الأعمال'], ['report', 'التقارير']];
-  if (can('admin')) items.push(['import', 'استيراد'], ['users', 'المستخدمون']);
+  if (can('admin')) items.push(['import', 'استيراد'], ['users', 'المستخدمون'], ['settings', 'الإعدادات']);
   $('#nav').innerHTML = items.map(([k, l]) => `<a href="#/${k}" data-p="${k}">${l}</a>`).join('');
   $('#view').innerHTML = '<div class="loading"><div class="spin"></div><p id="loadMsg">جارٍ تحميل البيانات…</p></div>';
   try {
     S.tapes = await DB.listTapes((a, b) => { const m = $('#loadMsg'); if (m) m.textContent = `جارٍ تحميل البيانات… ${a} / ${b}`; });
   } catch (e) { $('#view').innerHTML = `<div class="empty err">تعذّر تحميل البيانات: ${esc(e.message)}</div>`; return; }
+  try { S.logo = await DB.getSetting('logo'); } catch (e) { S.logo = null; }
+  S.logo = S.logo || 'img/logo.png';
   if (!S.tapes.length) toast('لا توجد بيانات في جدول الأشرطة بعد — استورد الشيت أولاً.', true);
   route();
 }
@@ -80,12 +82,12 @@ window.addEventListener('hashchange', () => S.profile && route());
 function go(p) { location.hash = '#/' + p; }
 function route() {
   const p = (location.hash.replace('#/', '') || 'dashboard').split('?')[0];
-  const allowed = ['dashboard', 'tapes', 'works', 'report', 'import', 'users'];
+  const allowed = ['dashboard', 'tapes', 'works', 'report', 'import', 'users', 'settings'];
   S.page = allowed.includes(p) ? p : 'dashboard';
-  if ((S.page === 'import' || S.page === 'users') && !can('admin')) S.page = 'dashboard';
+  if (['import', 'users', 'settings'].includes(S.page) && !can('admin')) S.page = 'dashboard';
   $$('#nav a').forEach(a => a.classList.toggle('on', a.dataset.p === S.page));
-  document.title = 'أرشيف الأشرطة – ' + ({ dashboard: 'الرئيسية', tapes: 'الأشرطة', works: 'الأعمال', report: 'التقارير', import: 'استيراد', users: 'المستخدمون' }[S.page]);
-  ({ dashboard: viewDashboard, tapes: viewTapes, works: viewWorks, report: viewReport, import: viewImport, users: viewUsers }[S.page])();
+  document.title = 'أرشيف الأشرطة – ' + ({ dashboard: 'الرئيسية', tapes: 'الأشرطة', works: 'الأعمال', report: 'التقارير', import: 'استيراد', users: 'المستخدمون', settings: 'الإعدادات' }[S.page]);
+  ({ dashboard: viewDashboard, tapes: viewTapes, works: viewWorks, report: viewReport, import: viewImport, users: viewUsers, settings: viewSettings }[S.page])();
   window.scrollTo(0, 0);
 }
 
@@ -238,6 +240,7 @@ function viewReport() {
         <label>نوع العمل<select id="rt">${opts(uniq('work_type'), r.type)}</select></label>
         <label>الحالة<select id="rs">${opts([...new Set(S.tapes.map(x => x.state || 'غير محدد'))].sort(), r.state)}</select></label>
         <label>التصنيف<select id="rc">${opts(uniq('category'), r.category)}</select></label>
+        <label>اسم الموقّع<input id="rsign" placeholder="اسم رئيس الإدارة" value="${esc(r.signer)}"></label>
         <button class="btn primary" id="rgo">🔍 عرض</button>
         <button class="btn ghost" id="rclear">مسح</button>
       </div>
@@ -256,6 +259,7 @@ function viewReport() {
   const upd = () => { r.kind = $('#rk').value; r.q = $('#rq').value; r.type = $('#rt').value; r.state = $('#rs').value; r.category = $('#rc').value; r.limit = 40; };
   let t; $('#rq').addEventListener('input', () => { clearTimeout(t); t = setTimeout(() => { upd(); drawReport(); }, 250); });
   ['rk', 'rt', 'rs', 'rc'].forEach(i => $('#' + i).addEventListener('change', () => { upd(); drawReport(); }));
+  $('#rsign').addEventListener('input', e => { r.signer = e.target.value; try { localStorage.setItem('signer', r.signer); } catch (x) {} $$('.sign-name').forEach(n => n.textContent = r.signer); });
   $('#rgo').onclick = () => { upd(); drawReport(); };
   $('#rclear').onclick = () => { S.rf = { ...r, q: '', type: '', state: '', category: '', work: '', limit: 40 }; viewReport(); };
   if (r.work) $('#rwork').onclick = () => { r.work = ''; viewReport(); };
@@ -265,9 +269,10 @@ function viewReport() {
   taSetOrientation(r.orient); drawReport();
 }
 
-function workBlock(w) {
+function workBlock(w, i, intro) {
   const m = (l, x) => x ? `<span>${l}: <b>${esc(x)}</b></span>` : '';
-  return `<section class="work${w.rows.length <= 8 ? ' keep' : ''}">
+  return `<section class="work page">
+    ${banner()}${intro || stripHTML()}
     <div class="work-head"><h3>${esc(w.name)}</h3>
       <div class="wmeta">${m('النوع', w.type)}${m('التصنيف', w.category)}${m('إخراج', w.director)}${m('تأليف', w.author)}${m('سيناريو', w.scripts)}
       <span>عدد الأشرطة: <b>${w.rows.length}</b></span></div>
@@ -275,7 +280,7 @@ function workBlock(w) {
       ${w.singers ? `<div class="wcast"><b>المطربون:</b> ${esc(w.singers)}</div>` : ''}
       <div class="wst">${Object.entries(w.states).map(([s, c]) => `${stateChip(s)}<small>×${c}</small>`).join(' ')}</div></div>
     <table class="rt"><thead><tr><th class="c-i">م</th>${TA_REPORT_COLS.map(c => `<th>${c[1]}</th>`).join('')}</tr></thead>
-    <tbody>${w.rows.map((r, i) => `<tr><td class="c-i">${i + 1}</td>${TA_REPORT_COLS.map(([k]) => k === 'state' ? `<td>${stateChip(r.state)}</td>` : `<td${k === 'notes' ? ' class="c-n"' : ''}>${esc(taV(r[k]))}</td>`).join('')}</tr>`).join('')}</tbody></table></section>`;
+    <tbody>${w.rows.map((r, i) => `<tr><td class="c-i">${i + 1}</td>${TA_REPORT_COLS.map(([k]) => k === 'state' ? `<td>${stateChip(r.state)}</td>` : `<td${k === 'notes' ? ' class="c-n"' : ''}>${esc(taV(r[k]))}</td>`).join('')}</tr>`).join('')}</tbody></table>${signHTML()}</section>`;
 }
 function summaryHTML(rows) {
   const types = [...new Set(rows.map(r => r.work_type || 'غير محدد'))].sort((a, b) => a.localeCompare(b, 'ar'));
@@ -286,17 +291,26 @@ function summaryHTML(rows) {
     ${types.map(t => `<tr><td class="nm">${esc(t)}</td>${states.map(s => `<td class="num">${m[t][s] || '—'}</td>`).join('')}<td class="num"><b>${Object.values(m[t]).reduce((a, b) => a + b, 0)}</b></td></tr>`).join('')}
     <tr class="tot"><td>الإجمالي</td>${states.map(s => `<td class="num">${tot(s)}</td>`).join('')}<td class="num">${rows.length}</td></tr></tbody></table>`;
 }
+const signHTML = () => `<div class="sign"><div class="sign-title">${esc(S.rf.title)}</div><div class="sign-space"></div><div class="sign-name">${esc(S.rf.signer)}</div></div>`;
+const banner = () => S.logo ? `<img class="logo-banner" src="${S.logo}" alt="">` : '';
+const stripHTML = () => `<div class="rep-strip"><b>${S.rf.kind === 'summary' ? 'ملخص حالة الأشرطة' : 'بيان حالة الأعمال'}</b><span>${taToday()}</span></div>`;
+function introHTML(rows, works) {
+  const sc = {}; rows.forEach(x => { const s = x.state || 'غير محدد'; sc[s] = (sc[s] || 0) + 1; });
+  return `<div class="rep-head"><div><h2>${S.rf.kind === 'summary' ? 'ملخص حالة الأشرطة' : 'بيان حالة الأعمال'}</h2><div class="sub">${esc(filterSummary())}</div></div>
+      <div class="rmeta"><div>التاريخ: ${taToday()}</div><div>أعدّه: ${esc(S.profile.full_name || S.profile.email)}</div></div></div>
+    <div class="sum-row"><div class="sum-card"><b>${works.length.toLocaleString('ar-EG')}</b><span>عمل</span></div><div class="sum-card"><b>${rows.length.toLocaleString('ar-EG')}</b><span>شريط</span></div>
+      ${Object.entries(sc).sort((a, b) => b[1] - a[1]).map(([s, c]) => `<div class="sum-card">${stateChip(s)}<b>${c.toLocaleString('ar-EG')}</b></div>`).join('')}</div>`;
+}
 function drawReport(all) {
   const r = S.rf, rows = reportRows(), el = $('#paper'); if (!el) return;
   const works = taGroupWorks(rows), shown = all ? works : works.slice(0, r.limit);
-  const sc = {}; rows.forEach(x => { const s = x.state || 'غير محدد'; sc[s] = (sc[s] || 0) + 1; });
   el.className = 'paper ' + r.orient;
+  let body;
+  if (!rows.length) body = banner() + '<div class="empty">لا توجد بيانات مطابقة</div>';
+  else if (r.kind === 'summary') body = `<section class="work page">${banner()}${introHTML(rows, works)}${summaryHTML(rows)}${signHTML()}</section>`;
+  else body = shown.map((w, i) => workBlock(w, i, i === 0 ? introHTML(rows, works) : '')).join('');
   el.innerHTML = `<table class="pwrap"><tbody><tr><td>
-    <div class="rep-head"><div><h2>${r.kind === 'summary' ? 'ملخص حالة الأشرطة' : 'بيان حالة الأعمال'}</h2><div class="sub">${esc(filterSummary())}</div></div>
-      <div class="rmeta"><div>التاريخ: ${taToday()}</div><div>أعدّه: ${esc(S.profile.full_name || S.profile.email)}</div></div></div>
-    <div class="sum-row"><div class="sum-card"><b>${works.length.toLocaleString('ar-EG')}</b><span>عمل</span></div><div class="sum-card"><b>${rows.length.toLocaleString('ar-EG')}</b><span>شريط</span></div>
-      ${Object.entries(sc).sort((a, b) => b[1] - a[1]).map(([s, c]) => `<div class="sum-card">${stateChip(s)}<b>${c.toLocaleString('ar-EG')}</b></div>`).join('')}</div>
-    ${!rows.length ? '<div class="empty">لا توجد بيانات مطابقة</div>' : r.kind === 'summary' ? summaryHTML(rows) : shown.map(workBlock).join('')}
+    ${body}
     ${!all && r.kind !== 'summary' && works.length > shown.length ? `<div class="more no-print"><button class="btn" id="rMore">عرض المزيد (${shown.length} من ${works.length})</button><span class="muted"> الطباعة والتصدير يشملان كل الأعمال.</span></div>` : ''}
     <div class="rep-end">— نهاية التقرير — تصميم ${esc(TA_OWNER)}</div>
     </td></tr></tbody><tfoot><tr><td class="sp-f"></td></tr></tfoot></table>`;
@@ -427,16 +441,63 @@ async function viewUsers() {
   try {
     const list = await DB.listProfiles();
     $('#usersBox').className = '';
-    $('#usersBox').innerHTML = `<p class="muted">مدير: كل الصلاحيات • محرر: إضافة وتعديل الأشرطة • مشاهد: عرض وتصدير فقط. الحسابات الجديدة تُنشأ من Supabase ← Authentication ثم تُفعَّل من هنا.</p>
+    $('#usersBox').innerHTML = `<p class="muted">مدير: كل الصلاحيات • محرر: إضافة وتعديل الأشرطة • مشاهد: عرض وتصدير فقط.</p>
+      <form id="newUser" class="filters" autocomplete="off">
+        <label>الاسم<input name="name" required></label>
+        <label>البريد الإلكتروني<input name="email" type="email" required dir="ltr"></label>
+        <label>كلمة المرور (6 أحرف فأكثر)<input name="pw" type="text" minlength="6" required dir="ltr"></label>
+        <label>الصلاحية<select name="role"><option value="viewer">مشاهد</option><option value="editor">محرر</option><option value="admin">مدير</option></select></label>
+        <button class="btn primary" type="submit">+ إضافة مستخدم</button>
+      </form>
       <div class="tbl-wrap"><table class="tbl"><thead><tr><th>الاسم</th><th>البريد</th><th>الصلاحية</th><th>مفعّل</th></tr></thead><tbody>
       ${list.map(u => `<tr><td>${esc(u.full_name)}</td><td dir="ltr" class="ltr">${esc(u.email)}</td>
         <td><select data-u="${u.id}" data-f="role" ${u.id === S.profile.id ? 'disabled' : ''}>${['admin', 'editor', 'viewer'].map(r => `<option value="${r}" ${u.role === r ? 'selected' : ''}>${ROLE_AR[r]}</option>`).join('')}</select></td>
         <td><input type="checkbox" data-u="${u.id}" data-f="active" ${u.active ? 'checked' : ''} ${u.id === S.profile.id ? 'disabled' : ''}></td></tr>`).join('')}</tbody></table></div>`;
+    $('#newUser').addEventListener('submit', async e => {
+      e.preventDefault(); const f = e.target, b = f.querySelector('button'); b.disabled = true;
+      try {
+        await DB.createUser(f.email.value, f.pw.value, f.name.value.trim(), f.role.value);
+        toast('تمت إضافة المستخدم'); viewUsers();
+      } catch (err) { toast('تعذّرت الإضافة: ' + err.message, true); b.disabled = false; }
+    });
     $$('#usersBox [data-u]').forEach(el => el.addEventListener('change', async () => {
       const patch = { [el.dataset.f]: el.type === 'checkbox' ? el.checked : el.value };
       try { await DB.updateProfile(el.dataset.u, patch); toast('تم تحديث الصلاحية'); } catch (err) { toast('فشل التحديث: ' + err.message, true); }
     }));
   } catch (e) { $('#usersBox').innerHTML = `<div class="empty err">${esc(e.message)}</div>`; }
+}
+
+// ================= الإعدادات (مدير): لوجو التقرير =================
+function viewSettings() {
+  $('#view').innerHTML = `
+    <div class="page-head"><h2>الإعدادات</h2></div>
+    <section class="card narrow"><h3>لوجو التقارير</h3>
+      <p class="muted">يظهر أعلى كل ورقة في التقرير بعرض الورقة بالكامل. الأفضل صورة عريضة (بانر) مثل 2000×300 بكسل بصيغة PNG أو JPG.</p>
+      <div id="logoBox">${S.logo ? `<img class="logo-prev" src="${S.logo}" alt="اللوجو الحالي">` : '<div class="muted">لا يوجد لوجو حالياً.</div>'}</div>
+      <input type="file" id="logoFile" accept="image/png,image/jpeg,image/webp">
+      <div class="actions"><button class="btn primary" id="logoSave" disabled>حفظ اللوجو</button>${S.logo ? '<button class="btn" id="logoDel">حذف اللوجو</button>' : ''}</div>
+    </section>`;
+  let pending = null;
+  $('#logoFile').addEventListener('change', e => {
+    const f = e.target.files[0]; if (!f) return;
+    const img = new Image(), url = URL.createObjectURL(f);
+    img.onload = () => {
+      const W = Math.min(img.width, 1800), H = Math.round(img.height * W / img.width);
+      const cv = document.createElement('canvas'); cv.width = W; cv.height = H;
+      const ctx = cv.getContext('2d'); ctx.drawImage(img, 0, 0, W, H);
+      pending = f.type === 'image/png' ? cv.toDataURL('image/png') : cv.toDataURL('image/jpeg', 0.9);
+      if (pending.length > 1500000) pending = cv.toDataURL('image/jpeg', 0.75);
+      $('#logoBox').innerHTML = `<img class="logo-prev" src="${pending}" alt="معاينة">`; $('#logoSave').disabled = false;
+      URL.revokeObjectURL(url);
+    };
+    img.onerror = () => toast('تعذّر قراءة الصورة', true); img.src = url;
+  });
+  $('#logoSave').onclick = async () => {
+    try { await DB.setSetting('logo', pending); S.logo = pending; toast('تم حفظ اللوجو'); viewSettings(); }
+    catch (err) { toast('فشل الحفظ: ' + err.message + ' (هل شغّلت add_settings.sql؟)', true); }
+  };
+  const del = $('#logoDel');
+  if (del) del.onclick = async () => { try { await DB.setSetting('logo', null); S.logo = null; toast('تم الحذف'); viewSettings(); } catch (err) { toast('فشل: ' + err.message, true); } };
 }
 
 boot();
