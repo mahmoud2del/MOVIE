@@ -52,7 +52,8 @@ const DB = (() => {
 
   async function getProfile(user) {
     const { data, error } = await sb.from('profiles').select('*').eq('id', user.id).maybeSingle();
-    if (error || !data) throw new Error('لا يوجد ملف صلاحيات لهذا الحساب، تواصل مع المدير.');
+    if (error) throw new Error('تعذّر قراءة الصلاحيات: ' + error.message);
+    if (!data) throw new Error('لا يوجد ملف صلاحيات لهذا الحساب (معرّف الحساب: ' + user.id + ' — ' + (user.email || '') + ')، تواصل مع المدير.');
     return data;
   }
 
@@ -130,5 +131,38 @@ const DB = (() => {
     if (error) throw new Error(error.message);
   }
 
-  return { demo, init, signIn, restore, signOut, listTapes, saveTape, deleteTape, importRows, listProfiles, updateProfile };
+  async function createUser(email, password, fullName, role) {
+    email = email.trim().toLowerCase();
+    if (demo) {
+      if (DEMO_USERS[email]) throw new Error('هذا البريد مسجل بالفعل');
+      DEMO_USERS[email] = { pw: password, profile: { id: 'd' + Date.now(), email, full_name: fullName, role, active: true } };
+      return;
+    }
+    need();
+    // عميل منفصل حتى لا تتأثر جلسة المدير الحالية
+    const tmp = window.supabase.createClient(sb.supabaseUrl, cfg.SUPABASE_ANON_KEY.trim(), {
+      auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false, storageKey: 'tmp-create-user' }
+    });
+    const { data, error } = await tmp.auth.signUp({ email, password, options: { data: { full_name: fullName } } });
+    if (error) throw new Error(error.message);
+    if (!data.user || (data.user.identities && data.user.identities.length === 0)) throw new Error('هذا البريد مسجل بالفعل');
+    const { error: e2 } = await sb.from('profiles').update({ role, active: true, full_name: fullName }).eq('id', data.user.id);
+    if (e2) throw new Error('تم إنشاء الحساب لكن تعذّر ضبط الصلاحية: ' + e2.message);
+  }
+
+  // ---------- الإعدادات (اللوجو) ----------
+  async function getSetting(key) {
+    if (demo) { try { return localStorage.getItem('setting_' + key); } catch (e) { return null; } }
+    const { data } = await sb.from('app_settings').select('value').eq('key', key).maybeSingle();
+    return data ? data.value : null;
+  }
+  async function setSetting(key, value) {
+    if (demo) { try { value === null ? localStorage.removeItem('setting_' + key) : localStorage.setItem('setting_' + key, value); } catch (e) {} return; }
+    const q = value === null ? sb.from('app_settings').delete().eq('key', key)
+                             : sb.from('app_settings').upsert({ key, value, updated_at: new Date().toISOString() }, { onConflict: 'key' });
+    const { error } = await q;
+    if (error) throw new Error(error.message);
+  }
+
+  return { demo, getSetting, setSetting, createUser, init, signIn, restore, signOut, listTapes, saveTape, deleteTape, importRows, listProfiles, updateProfile };
 })();
