@@ -270,15 +270,18 @@ function viewReport() {
 }
 
 function workBlock(w, i, intro) {
-  const m = (l, x) => x ? `<span>${l}: <b>${esc(x)}</b></span>` : '';
+  const items = [['النوع', w.type], ['التصنيف', w.category], ['إخراج', w.director], ['تأليف', w.author], ['سيناريو', w.scripts], ['عدد الأشرطة', String(w.rows.length)]].filter(x => x[1]);
+  let info = '';
+  for (let k = 0; k < items.length; k += 2) {
+    const a1 = items[k], b1 = items[k + 1];
+    info += `<tr><th>${a1[0]}</th><td${b1 ? '' : ' colspan="3"'}>${esc(a1[1])}</td>${b1 ? `<th>${b1[0]}</th><td>${esc(b1[1])}</td>` : ''}</tr>`;
+  }
+  if (w.cast) info += `<tr><th>الأبطال والضيوف</th><td colspan="3">${esc(w.cast)}</td></tr>`;
+  if (w.singers) info += `<tr><th>المطربون</th><td colspan="3">${esc(w.singers)}</td></tr>`;
+  info += `<tr><th>الحالات</th><td colspan="3">${Object.entries(w.states).map(([s, c]) => `${stateChip(s)}<small>×${c}</small>`).join(' ')}</td></tr>`;
   return `<section class="work page">
     ${banner()}${intro || stripHTML()}
-    <div class="work-head"><h3>${esc(w.name)}</h3>
-      <div class="wmeta">${m('النوع', w.type)}${m('التصنيف', w.category)}${m('إخراج', w.director)}${m('تأليف', w.author)}${m('سيناريو', w.scripts)}
-      <span>عدد الأشرطة: <b>${w.rows.length}</b></span></div>
-      ${w.cast ? `<div class="wcast"><b>الأبطال والضيوف:</b> ${esc(w.cast)}</div>` : ''}
-      ${w.singers ? `<div class="wcast"><b>المطربون:</b> ${esc(w.singers)}</div>` : ''}
-      <div class="wst">${Object.entries(w.states).map(([s, c]) => `${stateChip(s)}<small>×${c}</small>`).join(' ')}</div></div>
+    <table class="info"><thead><tr><th class="ttl" colspan="4">${esc(w.name)}</th></tr></thead><tbody>${info}</tbody></table>
     <table class="rt"><thead><tr><th class="c-i">م</th>${TA_REPORT_COLS.map(c => `<th>${c[1]}</th>`).join('')}</tr></thead>
     <tbody>${w.rows.map((r, i) => `<tr><td class="c-i">${i + 1}</td>${TA_REPORT_COLS.map(([k]) => k === 'state' ? `<td>${stateChip(r.state)}</td>` : `<td${k === 'notes' ? ' class="c-n"' : ''}>${esc(taV(r[k]))}</td>`).join('')}</tr>`).join('')}</tbody></table>${signHTML()}</section>`;
 }
