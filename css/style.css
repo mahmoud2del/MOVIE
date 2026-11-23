@@ -200,3 +200,9 @@ small{color:var(--muted);margin-inline-end:4px}
 .info td{width:35%;font-weight:600}
 .info td[colspan="3"]{width:85%}
 .info th.ttl{background:var(--pri);color:#fff;font-size:16px;text-align:center;width:auto;padding:6px 8px}
+
+/* قائمة أسماء الأعمال: 3 أعمدة مرقّمة */
+.names{width:100%;border-collapse:collapse;font-size:12px;margin-top:6px}
+.names td{border:1px solid #c5d0da;padding:4px 6px;height:7mm}
+.names td.n{width:7%;text-align:center;background:#eaf0f6;color:var(--pri);font-weight:700}
+.names td.t{width:26.3%;font-weight:600}
