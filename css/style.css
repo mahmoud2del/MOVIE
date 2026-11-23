@@ -182,6 +182,7 @@ small{color:var(--muted);margin-inline-end:4px}
 .logo-prev{max-width:100%;border:1px dashed var(--line);border-radius:8px;padding:6px;background:#fafbfc}
 @media print{
   .rep-end{display:none}
+  .site-footer .owner{display:none}
   .work.page{break-after:page;page-break-after:always;border-bottom:0;margin-bottom:0;padding-bottom:0}
   .work.page:last-of-type{break-after:auto;page-break-after:auto}
 }
