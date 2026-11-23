@@ -110,17 +110,12 @@ async function taDownloadPDF(el, orient, fileName) {
     image: { type: 'jpeg', quality: 0.95 },
     html2canvas: { scale: 2, useCORS: true, backgroundColor: '#ffffff' },
     jsPDF: { unit: 'mm', format: 'a4', orientation: orient },
-    pagebreak: { mode: ['css', 'legacy'], avoid: ['tr', '.work-head', '.sum-card'] },
+    pagebreak: { mode: ['css', 'legacy'], before: '.work.page + .work.page', avoid: ['tr', '.work-head', '.sum-card'] },
   }).from(el).toPdf();
   await worker.get('pdf').then(pdf => {
     const n = pdf.internal.getNumberOfPages();
-    const wm = taStampCanvas(900, 300, (x, w, h) => {
-      x.translate(w / 2, h / 2); x.rotate(-0.35); x.fillStyle = 'rgba(15,61,94,0.07)';
-      x.font = '800 90px Cairo, Tahoma, sans-serif'; x.fillText(`تصميم ${TA_OWNER}`, 0, 25);
-    });
     for (let i = 1; i <= n; i++) {
       pdf.setPage(i);
-      pdf.addImage(wm, 'PNG', (W - 150) / 2, (H - 50) / 2, 150, 50);
       const ft = taStampCanvas(1600, 60, (x, w, h) => {
         x.fillStyle = '#5b6b7a'; x.font = '600 28px Cairo, Tahoma, sans-serif';
         x.textAlign = 'right'; x.fillText(`تصميم ${TA_OWNER}`, w - 10, 40);
