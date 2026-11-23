@@ -73,7 +73,7 @@ async function enter(profile) {
     S.tapes = await DB.listTapes((a, b) => { const m = $('#loadMsg'); if (m) m.textContent = `جارٍ تحميل البيانات… ${a} / ${b}`; });
   } catch (e) { $('#view').innerHTML = `<div class="empty err">تعذّر تحميل البيانات: ${esc(e.message)}</div>`; return; }
   try { S.logo = await DB.getSetting('logo'); } catch (e) { S.logo = null; }
-  S.logo = S.logo || 'img/logo.png';
+  S.logo = S.logo || window.DEFAULT_LOGO || 'img/logo.png';
   if (!S.tapes.length) toast('لا توجد بيانات في جدول الأشرطة بعد — استورد الشيت أولاً.', true);
   route();
 }
@@ -292,7 +292,7 @@ function summaryHTML(rows) {
     <tr class="tot"><td>الإجمالي</td>${states.map(s => `<td class="num">${tot(s)}</td>`).join('')}<td class="num">${rows.length}</td></tr></tbody></table>`;
 }
 const signHTML = () => `<div class="sign"><div class="sign-title">${esc(S.rf.title)}</div><div class="sign-space"></div><div class="sign-name">${esc(S.rf.signer)}</div></div>`;
-const banner = () => S.logo ? `<img class="logo-banner" src="${S.logo}" alt="">` : '';
+const banner = () => S.logo ? `<img class="logo-banner" src="${S.logo}" alt="" onerror="this.style.display='none'">` : '';
 const stripHTML = () => `<div class="rep-strip"><b>${S.rf.kind === 'summary' ? 'ملخص حالة الأشرطة' : 'بيان حالة الأعمال'}</b><span>${taToday()}</span></div>`;
 function introHTML(rows, works) {
   const sc = {}; rows.forEach(x => { const s = x.state || 'غير محدد'; sc[s] = (sc[s] || 0) + 1; });
@@ -312,7 +312,7 @@ function drawReport(all) {
   el.innerHTML = `<table class="pwrap"><tbody><tr><td>
     ${body}
     ${!all && r.kind !== 'summary' && works.length > shown.length ? `<div class="more no-print"><button class="btn" id="rMore">عرض المزيد (${shown.length} من ${works.length})</button><span class="muted"> الطباعة والتصدير يشملان كل الأعمال.</span></div>` : ''}
-    <div class="rep-end">— نهاية التقرير — تصميم ${esc(TA_OWNER)}</div>
+    <div class="rep-end">— نهاية التقرير —</div>
     </td></tr></tbody><tfoot><tr><td class="sp-f"></td></tr></tfoot></table>`;
   const more = $('#rMore'); if (more) more.onclick = () => { r.limit += 60; drawReport(); };
 }
