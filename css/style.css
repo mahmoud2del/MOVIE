@@ -192,3 +192,11 @@ small{color:var(--muted);margin-inline-end:4px}
 .sign-title{font-weight:800;font-size:13px;color:#111}
 .sign-space{height:12mm}
 .sign-name{font-weight:700;font-size:13px;min-height:1.4em;border-top:1px solid #444;padding-top:2px}
+
+/* جدول بيانات العمل */
+.info{width:100%;border-collapse:collapse;font-size:12px;margin-bottom:6px;break-after:avoid;page-break-after:avoid}
+.info th,.info td{border:1px solid #b9c6d2;padding:4px 8px;text-align:start;vertical-align:top}
+.info th{background:#eaf0f6;color:var(--pri);width:15%;white-space:nowrap;font-weight:700}
+.info td{width:35%;font-weight:600}
+.info td[colspan="3"]{width:85%}
+.info th.ttl{background:var(--pri);color:#fff;font-size:16px;text-align:center;width:auto;padding:6px 8px}
