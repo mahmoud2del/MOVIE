@@ -8,7 +8,7 @@ const uniq = k => [...new Set(S.tapes.map(r => r[k]).filter(x => x !== null && x
 const S = {
   profile: null, logo: null, tapes: [], page: 'dashboard',
   tf: { q: '', type: '', state: '', color: '', kind: '', page: 1 },
-  rf: { signer: (() => { try { return localStorage.getItem('signer') || ''; } catch (e) { return ''; } })(), title: 'رئيس الإدارة المركزية للمكتبات والأفلام', kind: 'status', q: '', type: '', state: '', category: '', work: '', orient: 'portrait', limit: 40 },
+  rf: { color: '', signer: (() => { try { return localStorage.getItem('signer') || ''; } catch (e) { return ''; } })(), title: 'رئيس الإدارة المركزية للمكتبات والأفلام', kind: 'status', q: '', type: '', state: '', category: '', work: '', orient: 'portrait', limit: 40 },
 };
 const PAGE_SIZE = 50;
 const ROLE_AR = { admin: 'مدير', editor: 'محرر', viewer: 'مشاهد' };
@@ -161,7 +161,7 @@ function viewTapes() {
   $('#fq').addEventListener('keydown', e => { if (e.key === 'Enter') $('#fgo').click(); });
   $('#fclear').onclick = () => { S.tf = { q: '', type: '', state: '', color: '', kind: '', page: 1 }; viewTapes(); };
   $('#tpXlsx').onclick = () => taExportRowsXLSX(filterTapes(S.tf));
-  $('#tpReport').onclick = () => { S.rf = { ...S.rf, kind: 'status', q: f.q, type: f.type, state: f.state, category: '', work: '' }; go('report'); };
+  $('#tpReport').onclick = () => { S.rf = { ...S.rf, kind: 'status', q: f.q, type: f.type, state: f.state, color: f.color, category: '', work: '' }; go('report'); };
   drawTapes();
 }
 function drawTapes() {
@@ -221,12 +221,12 @@ document.addEventListener('click', e => {
 function reportRows() {
   const r = S.rf, q = norm(r.q).trim();
   return S.tapes.filter(x => (!r.work || x.work_name.trim() === r.work) && (!r.type || x.work_type === r.type) &&
-    (!r.state || (x.state || 'غير محدد') === r.state) && (!r.category || x.category === r.category) && (!q || searchText(x).includes(q)));
+    (!r.state || (x.state || 'غير محدد') === r.state) && (!r.category || x.category === r.category) && (!r.color || x.color === r.color) && (!q || searchText(x).includes(q)));
 }
 function filterSummary() {
   const r = S.rf, p = [];
   if (r.work) p.push('العمل: ' + r.work); if (r.type) p.push('النوع: ' + r.type); if (r.state) p.push('الحالة: ' + r.state);
-  if (r.category) p.push('التصنيف: ' + r.category); if (r.q) p.push('بحث: ' + r.q);
+  if (r.category) p.push('التصنيف: ' + r.category); if (r.color) p.push('اللون: ' + r.color); if (r.q) p.push('بحث: ' + r.q);
   return p.length ? p.join(' | ') : 'جميع الأعمال';
 }
 function viewReport() {
@@ -235,11 +235,12 @@ function viewReport() {
     <div class="page-head no-print"><h2>التقارير</h2></div>
     <div class="rep-controls no-print">
       <div class="filters">
-        <label>نوع التقرير<select id="rk"><option value="status" ${r.kind === 'status' ? 'selected' : ''}>بيان حالة لكل عمل</option><option value="summary" ${r.kind === 'summary' ? 'selected' : ''}>ملخص إحصائي (نوع العمل × الحالة)</option></select></label>
+        <label>نوع التقرير<select id="rk"><option value="status" ${r.kind === 'status' ? 'selected' : ''}>بيان حالة لكل عمل</option><option value="names" ${r.kind === 'names' ? 'selected' : ''}>قائمة أسماء الأعمال (3 أعمدة)</option><option value="summary" ${r.kind === 'summary' ? 'selected' : ''}>ملخص إحصائي (نوع العمل × الحالة)</option></select></label>
         <input id="rq" type="search" placeholder="بحث…" value="${esc(r.q)}">
         <label>نوع العمل<select id="rt">${opts(uniq('work_type'), r.type)}</select></label>
         <label>الحالة<select id="rs">${opts([...new Set(S.tapes.map(x => x.state || 'غير محدد'))].sort(), r.state)}</select></label>
         <label>التصنيف<select id="rc">${opts(uniq('category'), r.category)}</select></label>
+        <label>اللون<select id="rcol">${opts(uniq('color'), r.color)}</select></label>
         <label>اسم الموقّع<input id="rsign" placeholder="اسم رئيس الإدارة" value="${esc(r.signer)}"></label>
         <button class="btn primary" id="rgo">🔍 عرض</button>
         <button class="btn ghost" id="rclear">مسح</button>
@@ -256,16 +257,16 @@ function viewReport() {
       </div>
     </div>
     <div class="paper-wrap"><div id="paper" class="paper ${r.orient}"></div></div>`;
-  const upd = () => { r.kind = $('#rk').value; r.q = $('#rq').value; r.type = $('#rt').value; r.state = $('#rs').value; r.category = $('#rc').value; r.limit = 40; };
+  const upd = () => { r.kind = $('#rk').value; r.q = $('#rq').value; r.type = $('#rt').value; r.state = $('#rs').value; r.category = $('#rc').value; r.color = $('#rcol').value; r.limit = 40; };
   let t; $('#rq').addEventListener('input', () => { clearTimeout(t); t = setTimeout(() => { upd(); drawReport(); }, 250); });
-  ['rk', 'rt', 'rs', 'rc'].forEach(i => $('#' + i).addEventListener('change', () => { upd(); drawReport(); }));
+  ['rk', 'rt', 'rs', 'rc', 'rcol'].forEach(i => $('#' + i).addEventListener('change', () => { upd(); drawReport(); }));
   $('#rsign').addEventListener('input', e => { r.signer = e.target.value; try { localStorage.setItem('signer', r.signer); } catch (x) {} $$('.sign-name').forEach(n => n.textContent = r.signer); });
   $('#rgo').onclick = () => { upd(); drawReport(); };
-  $('#rclear').onclick = () => { S.rf = { ...r, q: '', type: '', state: '', category: '', work: '', limit: 40 }; viewReport(); };
+  $('#rclear').onclick = () => { S.rf = { ...r, q: '', type: '', state: '', category: '', color: '', work: '', limit: 40 }; viewReport(); };
   if (r.work) $('#rwork').onclick = () => { r.work = ''; viewReport(); };
   $$('input[name=ori]').forEach(x => x.addEventListener('change', () => { r.orient = x.value; $('#paper').className = 'paper ' + r.orient; taSetOrientation(r.orient); }));
   $('#rPrint').onclick = doPrint; $('#rPdf').onclick = doPdf;
-  $('#rXlsx').onclick = () => r.kind === 'summary' ? taExportRowsXLSX(reportRows()) : taExportReportXLSX(taGroupWorks(reportRows()));
+  $('#rXlsx').onclick = () => r.kind === 'names' ? taExportNamesXLSX(taGroupWorks(reportRows())) : r.kind === 'summary' ? taExportRowsXLSX(reportRows()) : taExportReportXLSX(taGroupWorks(reportRows()));
   taSetOrientation(r.orient); drawReport();
 }
 
@@ -296,13 +297,27 @@ function summaryHTML(rows) {
 }
 const signHTML = () => `<div class="sign"><div class="sign-title">${esc(S.rf.title)}</div><div class="sign-space"></div><div class="sign-name">${esc(S.rf.signer)}</div></div>`;
 const banner = () => S.logo ? `<img class="logo-banner" src="${S.logo}" alt="" onerror="this.style.display='none'">` : '';
-const stripHTML = () => `<div class="rep-strip"><b>${S.rf.kind === 'summary' ? 'ملخص حالة الأشرطة' : 'بيان حالة الأعمال'}</b><span>${taToday()}</span></div>`;
+const repTitle = () => ({ summary: 'ملخص حالة الأشرطة', names: 'قائمة الأعمال' }[S.rf.kind] || 'بيان حالة الأعمال');
+const stripHTML = () => `<div class="rep-strip"><b>${repTitle()}</b><span>${S.rf.kind === 'names' ? esc(filterSummary()) + ' — ' : ''}${taToday()}</span></div>`;
 function introHTML(rows, works) {
   const sc = {}; rows.forEach(x => { const s = x.state || 'غير محدد'; sc[s] = (sc[s] || 0) + 1; });
-  return `<div class="rep-head"><div><h2>${S.rf.kind === 'summary' ? 'ملخص حالة الأشرطة' : 'بيان حالة الأعمال'}</h2><div class="sub">${esc(filterSummary())}</div></div>
+  return `<div class="rep-head"><div><h2>${repTitle()}</h2><div class="sub">${esc(filterSummary())}</div></div>
       <div class="rmeta"><div>التاريخ: ${taToday()}</div><div>أعدّه: ${esc(S.profile.full_name || S.profile.email)}</div></div></div>
     <div class="sum-row"><div class="sum-card"><b>${works.length.toLocaleString('ar-EG')}</b><span>عمل</span></div><div class="sum-card"><b>${rows.length.toLocaleString('ar-EG')}</b><span>شريط</span></div>
-      ${Object.entries(sc).sort((a, b) => b[1] - a[1]).map(([s, c]) => `<div class="sum-card">${stateChip(s)}<b>${c.toLocaleString('ar-EG')}</b></div>`).join('')}</div>`;
+      ${S.rf.kind === 'names' ? '' : Object.entries(sc).sort((a, b) => b[1] - a[1]).map(([s, c]) => `<div class="sum-card">${stateChip(s)}<b>${c.toLocaleString('ar-EG')}</b></div>`).join('')}</div>`;
+}
+
+function namesHTML(works, rows) {
+  const land = S.rf.orient === 'landscape', first = land ? 7 : 20, rest = land ? 10 : 22;
+  const pages = []; let i = 0;
+  while (i < works.length) { const n = (pages.length ? rest : first) * 3; pages.push({ start: i, items: works.slice(i, i + n) }); i += n; }
+  return pages.map((p, pi) => {
+    const R = Math.ceil(p.items.length / 3); let tr = '';
+    for (let r = 0; r < R; r++) {
+      tr += '<tr>' + [0, 1, 2].map(c => { const k = c * R + r, w = p.items[k]; return w ? `<td class="n">${p.start + k + 1}</td><td class="t">${esc(w.name)}</td>` : '<td class="n"></td><td class="t"></td>'; }).join('') + '</tr>';
+    }
+    return `<section class="work page">${banner()}${pi === 0 ? introHTML(rows, works) : stripHTML()}<table class="names"><tbody>${tr}</tbody></table>${pi === pages.length - 1 ? signHTML() : ''}</section>`;
+  }).join('');
 }
 function drawReport(all) {
   const r = S.rf, rows = reportRows(), el = $('#paper'); if (!el) return;
@@ -310,11 +325,12 @@ function drawReport(all) {
   el.className = 'paper ' + r.orient;
   let body;
   if (!rows.length) body = banner() + '<div class="empty">لا توجد بيانات مطابقة</div>';
+  else if (r.kind === 'names') body = namesHTML(works, rows);
   else if (r.kind === 'summary') body = `<section class="work page">${banner()}${introHTML(rows, works)}${summaryHTML(rows)}${signHTML()}</section>`;
   else body = shown.map((w, i) => workBlock(w, i, i === 0 ? introHTML(rows, works) : '')).join('');
   el.innerHTML = `<table class="pwrap"><tbody><tr><td>
     ${body}
-    ${!all && r.kind !== 'summary' && works.length > shown.length ? `<div class="more no-print"><button class="btn" id="rMore">عرض المزيد (${shown.length} من ${works.length})</button><span class="muted"> الطباعة والتصدير يشملان كل الأعمال.</span></div>` : ''}
+    ${!all && r.kind === 'status' && works.length > shown.length ? `<div class="more no-print"><button class="btn" id="rMore">عرض المزيد (${shown.length} من ${works.length})</button><span class="muted"> الطباعة والتصدير يشملان كل الأعمال.</span></div>` : ''}
     <div class="rep-end">— نهاية التقرير —</div>
     </td></tr></tbody><tfoot><tr><td class="sp-f"></td></tr></tfoot></table>`;
   const more = $('#rMore'); if (more) more.onclick = () => { r.limit += 60; drawReport(); };
