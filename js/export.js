@@ -24,7 +24,7 @@ function taGroupWorks(rows) {
 
 // أعمدة جدول بيان الحالة (اسم العمل يُكتب مرة واحدة في رأس الكتلة)
 const TA_REPORT_COLS = [
-  ['tape_no','رقم الشريط'], ['tape_id','معرّف الشريط'], ['tape_kind','نوع الشريط'],
+  ['tape_no','رقم الشريط'], ['tape_kind','نوع الشريط'],
   ['episode','الحلقات'], ['part','الجزء'], ['color','اللون'], ['translation','الترجمة'],
   ['state','الحالة'], ['notes','ملاحظات'],
 ];
@@ -86,7 +86,7 @@ function taExportReportXLSX(works) {
     w.rows.forEach((r, i) => aoa.push([i === 0 ? w.name : '', i === 0 ? taV(w.type) : '', i === 0 ? taV(w.director) : '', i === 0 ? taV(w.author) : '', i === 0 ? taV(w.scripts) : '', i === 0 ? casts : '', ...TA_REPORT_COLS.map(c => taV(r[c[0]]))]));
     if (w.rows.length > 1) [0, 1, 2, 3, 4, 5].forEach(c => merges.push({ s: { r: start, c }, e: { r: aoa.length - 1, c } }));
   });
-  taSaveSheet(aoa, merges, [34, 16, 18, 18, 18, 50, 10, 12, 12, 9, 9, 11, 16, 16, 40], 'بيان الحالة', `status_report_${taStamp()}.xlsx`);
+  taSaveSheet(aoa, merges, [34, 16, 18, 18, 18, 50, 10, 12, 9, 9, 11, 16, 16, 40], 'بيان الحالة', `status_report_${taStamp()}.xlsx`);
 }
 
 // ---------- الاتجاه + الطباعة + PDF ----------
@@ -118,7 +118,6 @@ async function taDownloadPDF(el, orient, fileName) {
       pdf.setPage(i);
       const ft = taStampCanvas(1600, 60, (x, w, h) => {
         x.fillStyle = '#5b6b7a'; x.font = '600 28px Cairo, Tahoma, sans-serif';
-        x.textAlign = 'right'; x.fillText(`تصميم ${TA_OWNER}`, w - 10, 40);
         x.textAlign = 'left'; x.fillText(`صفحة ${i} من ${n}`, 10, 40);
       });
       pdf.addImage(ft, 'PNG', 8, H - 11, W - 16, (W - 16) * 60 / 1600);
